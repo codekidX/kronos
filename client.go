@@ -9,36 +9,50 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+// Client holds the connection for your crononut instance
+// You can build a nut client using `New` function of the nut
+// package. `New` expects you to pass a namespace as a parameter
+// because a client can belong to only a single namespace.
+//
+// You can create new clients for different namespaces to avoid
+// conflicts between task names.
+//
+// Example:
+//
+// moneyNut := New("localhost:8999", "moneyService")
+// adminNut := New("localhost:8999", "adminService")
 type Client struct {
 	serverAddr string
 	conn       *grpc.ClientConn
 	ns         string
 }
 
-type Request struct {
+// TaskBuilder helps you build new nut tasks.
+// A TaskBuilder can be created using `client.Build` method.
+type TaskBuilder struct {
 	conn *grpc.ClientConn
 	opts *proto.TaskOption
 }
 
-func (c *Client) Build(namespace string, name string) *Request {
+func (c *Client) Build(name string) *TaskBuilder {
 	opts := &proto.TaskOption{}
 	opts.Name = name
-	opts.Ns = namespace
-	return &Request{opts: opts, conn: c.conn}
+	opts.Ns = c.ns
+	return &TaskBuilder{opts: opts, conn: c.conn}
 }
 
-func (r *Request) WithExpression(expression string, isExact bool) *Request {
+func (r *TaskBuilder) WithExpression(expression string, isExact bool) *TaskBuilder {
 	r.opts.CronExp = expression
 	r.opts.IsExact = isExact
 	return r
 }
 
-func (r *Request) SendPayload(data []byte) *Request {
+func (r *TaskBuilder) SendPayload(data []byte) *TaskBuilder {
 	r.opts.Data = data
 	return r
 }
 
-func (r *Request) Target(url string) *Request {
+func (r *TaskBuilder) Target(url string) *TaskBuilder {
 	r.opts.Url = url
 	return r
 }
@@ -49,7 +63,9 @@ func (c *Client) ForceConnect(conn *grpc.ClientConn) {
 	c.conn = conn
 }
 
-func (r *Request) Nudge() (string, error) {
+// Nudge creates a nudge task in the chrononut server with TaskOption
+// that you built using the TaskBuilder.
+func (r *TaskBuilder) Nudge() (string, error) {
 	if r.opts.Ns == "" {
 		return "", errors.New("namespace is required")
 	} else if r.opts.Name == "" {

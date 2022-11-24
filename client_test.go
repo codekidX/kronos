@@ -35,13 +35,18 @@ func init() {
 		}
 	}()
 
-	conn, _ := grpc.DialContext(context.Background(), "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, _ := grpc.DialContext(
+		context.Background(),
+		"bufnet",
+		grpc.WithContextDialer(bufDialer),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	client, _ = nut.New("locahost:8999", "ash")
 	client.ForceConnect(conn)
 }
 
 func Test_BuilderWithoutNamespace(t *testing.T) {
-	_, err := client.Build("", "one").
+	_, err := client.Build("one").
 		WithExpression("0 30 * * * * *", false).
 		Nudge()
 	if err == nil {
@@ -50,7 +55,7 @@ func Test_BuilderWithoutNamespace(t *testing.T) {
 }
 
 func Test_BuilderWithoutName(t *testing.T) {
-	_, err := client.Build("ashish", "").
+	_, err := client.Build("").
 		WithExpression("0 30 * * * * *", false).
 		Nudge()
 	if err == nil {
@@ -59,7 +64,7 @@ func Test_BuilderWithoutName(t *testing.T) {
 }
 
 func Test_BuilderWithoutAnySchedule(t *testing.T) {
-	_, err := client.Build("ashish", "one").
+	_, err := client.Build("one").
 		Nudge()
 	if err == nil {
 		t.Error("Error should be thrown if schedule is not given")
@@ -67,7 +72,7 @@ func Test_BuilderWithoutAnySchedule(t *testing.T) {
 }
 
 func Test_BuilderWithWrongSchedule(t *testing.T) {
-	_, err := client.Build("ashish", "").
+	_, err := client.Build("one").
 		WithExpression("0 30 * * * a *", false).
 		Nudge()
 	if err == nil {
@@ -76,7 +81,7 @@ func Test_BuilderWithWrongSchedule(t *testing.T) {
 }
 
 func Test_BuilderSuccess(t *testing.T) {
-	resp, err := client.Build("ashish", "one").
+	resp, err := client.Build("one").
 		WithExpression("0 30 * * * * *", false).
 		Target("localhost:4000").
 		Nudge()
