@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+option go_package = "./proto";
+
+package main;
+
+service NutService {
+    rpc Nudge(TaskOption) returns (DoneReply);
+}
+
+message DoneReply {
+    bool ok = 1;
+    string message = 2;
+}
+
+message TaskOption {
+    string ns = 1;
+	string name = 2;
+	bytes data = 3;
+	string url = 4;
+	string cron_exp = 5;
+    bool is_exact = 6;
+}
