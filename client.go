@@ -3,7 +3,9 @@ package nut
 import (
 	"context"
 	"errors"
+	"fmt"
 	"nut/gen/proto"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -41,9 +43,9 @@ func (c *Client) Build(name string) *TaskBuilder {
 	return &TaskBuilder{opts: opts, conn: c.conn}
 }
 
-func (r *TaskBuilder) WithExpression(expression string, isExact bool) *TaskBuilder {
+func (r *TaskBuilder) WithExpression(expression string) *TaskBuilder {
 	r.opts.CronExp = expression
-	r.opts.IsExact = isExact
+	r.opts.IsExact = false
 	return r
 }
 
@@ -54,6 +56,12 @@ func (r *TaskBuilder) SendPayload(data []byte) *TaskBuilder {
 
 func (r *TaskBuilder) Target(url string) *TaskBuilder {
 	r.opts.Url = url
+	return r
+}
+
+func (r *TaskBuilder) At(dateTime time.Time) *TaskBuilder {
+	r.opts.CronExp = timeToExpr(dateTime)
+	r.opts.IsExact = true
 	return r
 }
 
@@ -80,7 +88,12 @@ func (r *TaskBuilder) Nudge() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// TODO: we need a proper return type instead of stirng
 	return reply.Message, nil
+}
+
+func timeToExpr(dateTime time.Time) string {
+	return fmt.Sprintf("%d %d %d %d * * *", dateTime.Minute(), dateTime.Hour(), dateTime.Day(), dateTime.Month())
 }
 
 func New(addr string, ns string) (*Client, error) {

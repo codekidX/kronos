@@ -47,7 +47,7 @@ func init() {
 
 func Test_BuilderWithoutNamespace(t *testing.T) {
 	_, err := client.Build("one").
-		WithExpression("0 30 * * * * *", false).
+		WithExpression("0 30 * * * * *").
 		Nudge()
 	if err == nil {
 		t.Error("Error should be thrown if namespace is not given")
@@ -56,7 +56,7 @@ func Test_BuilderWithoutNamespace(t *testing.T) {
 
 func Test_BuilderWithoutName(t *testing.T) {
 	_, err := client.Build("").
-		WithExpression("0 30 * * * * *", false).
+		WithExpression("0 30 * * * * *").
 		Nudge()
 	if err == nil {
 		t.Error("Error should be thrown if task name is not given")
@@ -73,7 +73,7 @@ func Test_BuilderWithoutAnySchedule(t *testing.T) {
 
 func Test_BuilderWithWrongSchedule(t *testing.T) {
 	_, err := client.Build("one").
-		WithExpression("0 30 * * * a *", false).
+		WithExpression("0 30 * * * a *").
 		Nudge()
 	if err == nil {
 		t.Error("Cron parser not throwing error on invalid cron expression")
@@ -82,7 +82,7 @@ func Test_BuilderWithWrongSchedule(t *testing.T) {
 
 func Test_BuilderSuccess(t *testing.T) {
 	resp, err := client.Build("one").
-		WithExpression("0 30 * * * * *", false).
+		WithExpression("0 30 * * * * *").
 		Target("localhost:4000").
 		Nudge()
 	t.Log(resp)
