@@ -37,9 +37,23 @@ func (nd *NutDatabase) cleanup() {
 	}
 }
 
+func (nd *NutDatabase) UpdateTaskStatus(ns, name string, status types.TaskStatus) error {
+	stmt, err := nd.db.Prepare(`UPDATE tasks SET status = ? WHERE ns = ? AND name = ?`)
+	if err != nil {
+		return err
+	}
+	_, err = stmt.Exec(status, ns, name)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// INTERFACE IMPLEMENTATION
+
 func (nd *NutDatabase) GetTasks() ([]types.Task, error) {
 	var tasks []types.Task
-	rows, err := nd.db.Query("SELECT * from tasks")
+	rows, err := nd.db.Query("SELECT * from tasks WHERE status != 3")
 	if err != nil {
 		return tasks, err
 	}
@@ -62,7 +76,7 @@ func (nd *NutDatabase) InsertTask(task types.Task) error {
 		`INSERT INTO tasks (
             ns,
             name,
-            typ,
+            status,
             data,
             url,
             cron_exp) VALUES(?,?,?,?,?,?)`)
@@ -72,7 +86,7 @@ func (nd *NutDatabase) InsertTask(task types.Task) error {
 	}
 
 	// TODO: maybe use last inserted id !
-	_, err = stmt.Exec(task.Options.Ns, task.Options.Name, "2", string(task.Options.Data), task.Options.Url, task.Options.CronExp)
+	_, err = stmt.Exec(task.Options.Ns, task.Options.Name, task.Status, string(task.Options.Data), task.Options.Url, task.Options.CronExp)
 	if err != nil {
 		return err
 	}
@@ -125,7 +139,7 @@ func InitializeDB(name *string) (*NutDatabase, error) {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             ns VARCHAR NOT NULL,
             name VARCHAR NOT NULL,
-            typ VARCHAR NOT NULL,
+            status VARCHAR NOT NULL,
             data VARCHAR,
             url VARCHAR NOT NULL,
             cron_exp VARCHAR,

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"nut/gen/proto"
 	"nut/pkg/types"
+	"strings"
 	"time"
 
 	"github.com/gorhill/cronexpr"
@@ -68,7 +69,7 @@ func (ns *NutService) Nudge(_ context.Context, opts *proto.TaskOption) (*proto.D
 		return nil, fmt.Errorf("schedule not provided %v", opts)
 	}
 
-	err := ns.NDB.InsertTask(types.Task{Options: opts})
+	err := ns.NDB.InsertTask(types.Task{Options: opts, Status: types.Active})
 	if err != nil {
 		return nil, err
 	}
@@ -82,27 +83,46 @@ func (ns *NutService) Nudge(_ context.Context, opts *proto.TaskOption) (*proto.D
 
 func (ns *NutService) triggerFunc(opts *proto.TaskOption, start time.Time) func() {
 	return func() {
+		if !strings.HasPrefix(opts.Url, "http") {
+			opts.Url = fmt.Sprintf("http://%s", opts.Url)
+		}
 		resp, err := http.Post(opts.Url, "application/json", bytes.NewBuffer(opts.Data))
 		if err != nil {
-			var output string
-			b, err := io.ReadAll(resp.Body)
-			if err != nil {
-				// TODO: here we log ERROR here
+			// TODO: mark task state as errored
+			updateerr := ns.NDB.UpdateTaskStatus(opts.Ns, opts.Name, types.Errored)
+			if updateerr != nil {
+				fmt.Println("updateerror: ", updateerr.Error())
 			}
-			output = string(b)
 			// here create new error artifact
 			ns.NDB.InsertArtifact(types.TaskArtifact{
 				Status:         types.Failure,
 				StartTime:      start,
 				EndTime:        time.Now(),
-				Output:         output,
-				ResponseType:   resp.Header.Get("Content-Type"),
-				ResponseStatus: resp.StatusCode,
+				Output:         err.Error(),
+				ResponseType:   "None",
+				ResponseStatus: 503,
 			})
-			// TODO: mark task state as errored
-
+			return
 		}
-		// TODO: here keep arti
+
+		var output string
+		b, err := io.ReadAll(resp.Body)
+		if err != nil {
+			// TODO: here we log ERROR here
+			b = []byte{}
+		}
+		output = string(b)
+		// here create new error artifact
+		ns.NDB.InsertArtifact(types.TaskArtifact{
+			Status:         types.Success,
+			StartTime:      start,
+			EndTime:        time.Now(),
+			Output:         output,
+			ResponseType:   resp.Header.Get("Content-Type"),
+			ResponseStatus: resp.StatusCode,
+		})
+
+		ns.spawn(opts)
 	}
 }
 
