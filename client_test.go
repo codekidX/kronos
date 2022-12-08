@@ -25,10 +25,12 @@ func bufDialer(context.Context, string) (net.Conn, error) {
 
 func init() {
 	testDBName := "nut_test.db"
-	db, _ := internal.InitializeDB(&testDBName)
 	lis = bufconn.Listen(bufSize)
 	s := grpc.NewServer()
-	proto.RegisterNutServiceServer(s, &internal.NutService{Db: db})
+	nutService := &internal.NutService{}
+	nutService.Init(&testDBName)
+	nutService.Cleanup()
+	proto.RegisterNutServiceServer(s, nutService)
 	go func() {
 		if err := s.Serve(lis); err != nil {
 			log.Fatalf("Server exited with error: %v", err)
@@ -88,5 +90,16 @@ func Test_BuilderSuccess(t *testing.T) {
 	t.Log(resp)
 	if err != nil {
 		t.Error(err)
+	}
+}
+
+func Test_DuplicateTaskInNamespace(t *testing.T) {
+	resp, err := client.Build("one").
+		WithExpression("0 30 * * * * *").
+		Target("localhost:4000").
+		Nudge()
+	t.Log(resp)
+	if err == nil {
+		t.Error("should have raised unique constraint error")
 	}
 }

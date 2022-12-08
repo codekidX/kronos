@@ -2,6 +2,7 @@ package types
 
 import (
 	"nut/gen/proto"
+	"time"
 )
 
 type TaskStatus int
@@ -12,6 +13,7 @@ const (
 	Active TaskStatus = iota
 	Stopped
 	Finished
+	Errored
 
 	Trigger TaskType = iota
 	Nudge
@@ -29,7 +31,10 @@ type Task struct {
 }
 
 type TaskArtifact struct {
-	Output        string
-	Status        ArtifactStatus
-	Response_type string
+	ResponseStatus int
+	Output         string
+	Status         ArtifactStatus
+	ResponseType   string
+	StartTime      time.Time
+	EndTime        time.Time
 }

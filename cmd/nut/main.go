@@ -14,10 +14,7 @@ func main() {
 	// initialize chrononut config
 
 	// initialize db
-	db, err := internal.InitializeDB(nil)
-	if err != nil {
-		panic(err)
-	}
+
 	// initialize Task channels
 	// initialize Log channels
 	lis, err := net.Listen("tcp", "localhost:8122")
@@ -28,7 +25,9 @@ func main() {
 	// initialize GRPC server
 	var opts []grpc.ServerOption
 	rpcServer := grpc.NewServer(opts...)
-	proto.RegisterNutServiceServer(rpcServer, &internal.NutService{Db: db})
+	nutService := &internal.NutService{}
+	nutService.Init(nil)
+	proto.RegisterNutServiceServer(rpcServer, nutService)
 	fmt.Println("Starting Nut RPC Server")
 	// start GRPC server
 	go rpcServer.Serve(lis)

@@ -2,39 +2,110 @@ package internal
 
 import (
 	"database/sql"
+	"nut/gen/proto"
 	"nut/pkg/types"
 	"os"
 	"path/filepath"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
 type Persistance interface {
-	GetTasks() (types.Task, error)
+	GetTasks() ([]types.Task, error)
 	InsertTask(types.Task) error
-	GetArtifacts() (types.TaskArtifact, error)
+	GetArtifacts() ([]types.TaskArtifact, error)
 	InsertArtifact(types.TaskArtifact) error
 }
 
-type NutDatabase struct{}
+type NutDatabase struct {
+	db *sql.DB
+}
 
-func (nd *NutDatabase) GetTasks() (types.Task, error) {
+func (nd *NutDatabase) cleanup() {
+	_, err := nd.db.Exec(`DELETE FROM tasks`)
+	if err != nil {
+		panic(err)
+	}
+	_, err = nd.db.Exec(`DELETE FROM artifacts`)
+	if err != nil {
+		panic(err)
+	}
+	_, err = nd.db.Exec(`VACUUM`)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (nd *NutDatabase) GetTasks() ([]types.Task, error) {
+	var tasks []types.Task
+	rows, err := nd.db.Query("SELECT * from tasks")
+	if err != nil {
+		return tasks, err
+	}
+
+	for rows.Next() {
+		t := types.Task{
+			Options: &proto.TaskOption{},
+		}
+		err = rows.Scan(&t.ID, &t.Options.Ns, &t.Options.Name, &t.Type, &t.Options.Data, &t.Options.Url, &t.Options.CronExp)
+		if err != nil {
+			return tasks, err
+		}
+		tasks = append(tasks, t)
+	}
+	return tasks, nil
+}
+
+func (nd *NutDatabase) InsertTask(task types.Task) error {
+	stmt, err := nd.db.Prepare(
+		`INSERT INTO tasks (
+            ns,
+            name,
+            typ,
+            data,
+            url,
+            cron_exp) VALUES(?,?,?,?,?,?)`)
+
+	if err != nil {
+		return err
+	}
+
+	// TODO: maybe use last inserted id !
+	_, err = stmt.Exec(task.Options.Ns, task.Options.Name, "2", string(task.Options.Data), task.Options.Url, task.Options.CronExp)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (nd *NutDatabase) GetArtifacts() ([]types.TaskArtifact, error) {
 	panic("not implemented") // TODO: Implement
 }
 
-func (nd *NutDatabase) InsertTask(_ types.Task) error {
-	panic("not implemented") // TODO: Implement
+func (nd *NutDatabase) InsertArtifact(a types.TaskArtifact) error {
+	stmt, err := nd.db.Prepare(
+		`INSERT INTO artifacts (output,
+			status,
+			response_type,
+			start_dtm,
+			end_dtm,
+			response_status) VALUES (?,?,?,?,?,?)`)
+	if err != nil {
+		// TODO: log warning error here
+		return err
+	}
+
+	_, err = stmt.Exec(a.Output, a.Status, a.ResponseType, a.StartTime.Format(time.Kitchen), a.EndTime.Format(time.Kitchen), a.ResponseStatus)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (nd *NutDatabase) GetArtifacts() (types.TaskArtifact, error) {
-	panic("not implemented") // TODO: Implement
-}
-
-func (nd *NutDatabase) InsertArtifact(_ types.TaskArtifact) error {
-	panic("not implemented") // TODO: Implement
-}
-
-func InitializeDB(name *string) (*sql.DB, error) {
+func InitializeDB(name *string) (*NutDatabase, error) {
 	if name == nil {
 		tmp := "nut.db"
 		name = &tmp
@@ -58,7 +129,6 @@ func InitializeDB(name *string) (*sql.DB, error) {
             data VARCHAR,
             url VARCHAR NOT NULL,
             cron_exp VARCHAR,
-            trigger_date VARCHAR,
             UNIQUE(ns, name))`)
 
 	if err != nil {
@@ -77,5 +147,5 @@ func InitializeDB(name *string) (*sql.DB, error) {
 		return nil, err
 	}
 
-	return db, nil
+	return &NutDatabase{db: db}, nil
 }
