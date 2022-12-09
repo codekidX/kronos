@@ -28,7 +28,7 @@ func init() {
 	lis = bufconn.Listen(bufSize)
 	s := grpc.NewServer()
 	nutService := &internal.NutService{}
-	nutService.Init(&testDBName)
+	nutService.Init(&testDBName, internal.CreateLogger())
 	nutService.Cleanup()
 	proto.RegisterNutServiceServer(s, nutService)
 	go func() {
