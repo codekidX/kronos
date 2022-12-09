@@ -39,6 +39,5 @@ jobs:
     - name: Run golint
       run: golint ./...
 
-  test:
     - name: Run tests
       run: go test -cover -race -vet=off ./...
