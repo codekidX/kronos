@@ -7,6 +7,7 @@ import (
 	"nut/gen/proto"
 	"nut/internal"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
 
@@ -22,13 +23,16 @@ func main() {
 		panic(err)
 	}
 
+	// zap logger init w.r.t environment
+	logger := internal.CreateLogger()
+
 	// initialize GRPC server
 	var opts []grpc.ServerOption
 	rpcServer := grpc.NewServer(opts...)
 	nutService := &internal.NutService{}
-	nutService.Init(nil)
+	nutService.Init(nil, logger)
 	proto.RegisterNutServiceServer(rpcServer, nutService)
-	fmt.Println("Starting Nut RPC Server")
+	logger.Info("Starting Nut RPC Server", zap.String("port", "8122"))
 	// start GRPC server
 	go rpcServer.Serve(lis)
 
@@ -36,6 +40,6 @@ func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Awesome!!")
 	})
-	fmt.Println("Starting Nut Admin Panel")
+	logger.Info("Starting Nut Admin Panel", zap.String("port", "8121"))
 	http.ListenAndServe("localhost:8121", nil)
 }

@@ -53,7 +53,7 @@ func (nd *NutDatabase) UpdateTaskStatus(ns, name string, status types.TaskStatus
 
 func (nd *NutDatabase) GetTasks() ([]types.Task, error) {
 	var tasks []types.Task
-	rows, err := nd.db.Query("SELECT * from tasks WHERE status != 3")
+	rows, err := nd.db.Query("SELECT * from tasks WHERE status != 3 OR status != 2")
 	if err != nil {
 		return tasks, err
 	}
