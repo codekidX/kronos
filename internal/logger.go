@@ -7,9 +7,11 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+const DEBUG_VALUE = "1"
+
 func CreateLogger() *zap.Logger {
 	var config zapcore.EncoderConfig
-	if os.Getenv("CN_DEBUG") == "1" {
+	if os.Getenv("CN_DEBUG") == DEBUG_VALUE {
 		config = zap.NewDevelopmentEncoderConfig()
 		consoleJSONEncoder := zapcore.NewJSONEncoder(config)
 		core := zapcore.NewTee(
