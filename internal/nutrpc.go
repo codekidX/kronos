@@ -18,7 +18,6 @@ import (
 // NutService implements NutServiceServer which is the
 // GRPC service governing the state of chrononut
 type NutService struct {
-	proto.UnimplementedNutServiceServer
 	NDB    *NutDatabase
 	logger *zap.Logger
 }
@@ -173,8 +172,4 @@ func getNextTrigger(cronExpr string) (time.Time, error) {
 
 func (ns *NutService) Cleanup() {
 	ns.NDB.cleanup()
-}
-
-func (ns *NutService) mustEmbedUnimplementedNutServiceServer() {
-	panic("not implemented") // TODO: Implement
 }

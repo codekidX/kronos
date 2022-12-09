@@ -43,21 +43,19 @@ func (c *nutServiceClient) Nudge(ctx context.Context, in *TaskOption, opts ...gr
 }
 
 // NutServiceServer is the server API for NutService service.
-// All implementations must embed UnimplementedNutServiceServer
+// All implementations should embed UnimplementedNutServiceServer
 // for forward compatibility
 type NutServiceServer interface {
 	Nudge(context.Context, *TaskOption) (*DoneReply, error)
-	mustEmbedUnimplementedNutServiceServer()
 }
 
-// UnimplementedNutServiceServer must be embedded to have forward compatible implementations.
+// UnimplementedNutServiceServer should be embedded to have forward compatible implementations.
 type UnimplementedNutServiceServer struct {
 }
 
 func (UnimplementedNutServiceServer) Nudge(context.Context, *TaskOption) (*DoneReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Nudge not implemented")
 }
-func (UnimplementedNutServiceServer) mustEmbedUnimplementedNutServiceServer() {}
 
 // UnsafeNutServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to NutServiceServer will
