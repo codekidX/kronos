@@ -16,6 +16,8 @@ type Persistance interface {
 	InsertTask(types.Task) error
 	GetArtifacts() ([]types.TaskArtifact, error)
 	InsertArtifact(types.TaskArtifact) error
+	UpdateTaskStatus(string, string, types.TaskStatus) error
+	cleanup()
 }
 
 type NutDatabase struct {
@@ -53,6 +55,7 @@ func (nd *NutDatabase) UpdateTaskStatus(ns, name string, status types.TaskStatus
 
 func (nd *NutDatabase) GetTasks() ([]types.Task, error) {
 	var tasks []types.Task
+	// tasks which are not finished or in error state
 	rows, err := nd.db.Query("SELECT * from tasks WHERE status != 3 OR status != 2")
 	if err != nil {
 		return tasks, err
@@ -62,7 +65,14 @@ func (nd *NutDatabase) GetTasks() ([]types.Task, error) {
 		t := types.Task{
 			Options: &proto.TaskOption{},
 		}
-		err = rows.Scan(&t.ID, &t.Options.Ns, &t.Options.Name, &t.Type, &t.Options.Data, &t.Options.Url, &t.Options.CronExp)
+		err = rows.Scan(
+			&t.ID,
+			&t.Options.Ns,
+			&t.Options.Name,
+			&t.Type,
+			&t.Options.Data,
+			&t.Options.Url,
+			&t.Options.CronExp)
 		if err != nil {
 			return tasks, err
 		}
@@ -86,7 +96,13 @@ func (nd *NutDatabase) InsertTask(task types.Task) error {
 	}
 
 	// TODO: maybe use last inserted id !
-	_, err = stmt.Exec(task.Options.Ns, task.Options.Name, task.Status, string(task.Options.Data), task.Options.Url, task.Options.CronExp)
+	_, err = stmt.Exec(
+		task.Options.Ns,
+		task.Options.Name,
+		task.Status,
+		string(task.Options.Data),
+		task.Options.Url,
+		task.Options.CronExp)
 	if err != nil {
 		return err
 	}
@@ -111,7 +127,13 @@ func (nd *NutDatabase) InsertArtifact(a types.TaskArtifact) error {
 		return err
 	}
 
-	_, err = stmt.Exec(a.Output, a.Status, a.ResponseType, a.StartTime.Format(time.Kitchen), a.EndTime.Format(time.Kitchen), a.ResponseStatus)
+	_, err = stmt.Exec(
+		a.Output,
+		a.Status,
+		a.ResponseType,
+		a.StartTime.Format(time.Kitchen),
+		a.EndTime.Format(time.Kitchen),
+		a.ResponseStatus)
 	if err != nil {
 		return err
 	}

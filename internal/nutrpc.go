@@ -18,29 +18,32 @@ import (
 // NutService implements NutServiceServer which is the
 // GRPC service governing the state of chrononut
 type NutService struct {
-	NDB    *NutDatabase
+	// Database Access Object
+	Dao    Persistance
 	logger *zap.Logger
 }
 
-func (ns *NutService) Init(dbName *string, logger *zap.Logger) {
-	db, err := InitializeDB(dbName)
+func (ns *NutService) Init(dbName *string, logger *zap.Logger) Persistance {
+	nutdb, err := InitializeDB(dbName)
 	if err != nil {
 		panic(err)
 	}
-	ns.NDB = db
+	ns.Dao = nutdb
 	ns.logger = logger
 
 	logger.Debug("connected to db",
-		zap.Any("stats", db.db.Stats()))
+		zap.Any("stats", nutdb.db.Stats()))
 
 	err = ns.load()
 	if err != nil {
 		panic(err)
 	}
+
+	return nutdb
 }
 
 func (ns *NutService) load() error {
-	tasks, err := ns.NDB.GetTasks()
+	tasks, err := ns.Dao.GetTasks()
 	if err != nil {
 		return err
 	}
@@ -84,7 +87,7 @@ func (ns *NutService) Nudge(_ context.Context, opts *proto.TaskOption) (*proto.D
 	}
 
 	ns.logger.Debug("inserting task", zap.Any("opts", opts))
-	err := ns.NDB.InsertTask(types.Task{Options: opts, Status: types.Active})
+	err := ns.Dao.InsertTask(types.Task{Options: opts, Status: types.Active})
 	if err != nil {
 		ns.logger.Sugar().Error("error while inserting a nudge call",
 			zap.Any("opts", opts))
@@ -92,7 +95,7 @@ func (ns *NutService) Nudge(_ context.Context, opts *proto.TaskOption) (*proto.D
 	}
 
 	// FIXME: best way might be we keep only task id in memory
-	// 		  so that it does not keep growing (although we use pointer here)
+	//        so that it does not keep growing (although we use pointer here)
 	err = ns.spawn(opts)
 	if err != nil {
 		return nil, err
@@ -115,12 +118,12 @@ func (ns *NutService) triggerFunc(opts *proto.TaskOption, start time.Time) func(
 		resp, err := http.Post(opts.Url, "application/json", bytes.NewBuffer(opts.Data))
 		if err != nil {
 			// TODO: mark task state as errored
-			updateerr := ns.NDB.UpdateTaskStatus(opts.Ns, opts.Name, types.Errored)
+			updateerr := ns.Dao.UpdateTaskStatus(opts.Ns, opts.Name, types.Errored)
 			if updateerr != nil {
 				ns.logger.Error("error while updating task status", zap.Error(updateerr))
 			}
 			// here create new error artifact
-			artinserr := ns.NDB.InsertArtifact(types.TaskArtifact{
+			artinserr := ns.Dao.InsertArtifact(types.TaskArtifact{
 				Status:         types.Failure,
 				StartTime:      start,
 				EndTime:        time.Now(),
@@ -142,7 +145,7 @@ func (ns *NutService) triggerFunc(opts *proto.TaskOption, start time.Time) func(
 		}
 		output = string(b)
 		// here create new error artifact
-		artinserr := ns.NDB.InsertArtifact(types.TaskArtifact{
+		artinserr := ns.Dao.InsertArtifact(types.TaskArtifact{
 			Status:         types.Success,
 			StartTime:      start,
 			EndTime:        time.Now(),
@@ -171,5 +174,5 @@ func getNextTrigger(cronExpr string) (time.Time, error) {
 }
 
 func (ns *NutService) Cleanup() {
-	ns.NDB.cleanup()
+	ns.Dao.cleanup()
 }

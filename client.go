@@ -21,8 +21,8 @@ import (
 //
 // Example:
 //
-// moneyNut := New("localhost:8999", "moneyService")
-// adminNut := New("localhost:8999", "adminService")
+// 		moneyNut := New("localhost:8999", "moneyService")
+// 		adminNut := New("localhost:8999", "adminService")
 type Client struct {
 	serverAddr string
 	conn       *grpc.ClientConn

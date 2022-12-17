@@ -1,11 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"net"
 	"net/http"
 	"nut/gen/proto"
 	"nut/internal"
+	"nut/internal/admin"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -30,16 +30,20 @@ func main() {
 	var opts []grpc.ServerOption
 	rpcServer := grpc.NewServer(opts...)
 	nutService := &internal.NutService{}
-	nutService.Init(nil, logger)
+	dao := nutService.Init(nil, logger)
 	proto.RegisterNutServiceServer(rpcServer, nutService)
 	logger.Info("Starting Nut RPC Server", zap.String("port", "8122"))
-	// start GRPC server
-	go rpcServer.Serve(lis)
 
-	// create HTTP server for serving admin panel
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "Awesome!!")
-	})
-	logger.Info("Starting Nut Admin Panel", zap.String("port", "8121"))
-	http.ListenAndServe("localhost:8121", nil)
+	if err := admin.ServePackaged(); err != nil {
+		// start GRPC server
+		rpcServer.Serve(lis)
+		logger.Error("Error cannot serve packaged", zap.Any("ref", err))
+	} else {
+		// we also add the Admin APIs now
+		admin.AddRoutes(dao)
+		// start GRPC server
+		go rpcServer.Serve(lis)
+		logger.Info("Starting Nut Admin Panel", zap.String("port", "8121"))
+		http.ListenAndServe("localhost:8121", nil)
+	}
 }
