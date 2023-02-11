@@ -11,13 +11,9 @@ import (
 	"google.golang.org/grpc"
 )
 
+var VERSION = "v1.0.0"
+
 func main() {
-	// initialize chrononut config
-
-	// initialize db
-
-	// initialize Task channels
-	// initialize Log channels
 	lis, err := net.Listen("tcp", "localhost:8122")
 	if err != nil {
 		panic(err)
@@ -34,7 +30,7 @@ func main() {
 	proto.RegisterNutServiceServer(rpcServer, nutService)
 	logger.Info("Starting Nut RPC Server", zap.String("port", "8122"))
 
-	if err := admin.ServePackaged(); err != nil {
+	if err := admin.ServeEmbeddedUI(); err != nil {
 		// start GRPC server
 		rpcServer.Serve(lis)
 		logger.Error("Error cannot serve packaged", zap.Any("ref", err))

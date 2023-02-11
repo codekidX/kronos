@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"io/fs"
@@ -9,10 +10,12 @@ import (
 	"nut/internal"
 )
 
+var ENV = "debug"
+
 //go:embed build
 var embeddedFiles embed.FS
 
-func ServePackaged() error {
+func ServeEmbeddedUI() error {
 	// Get the build subdirectory as the
 	// root directory so that it can be passed
 	// to the http.FileServer
@@ -41,7 +44,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 func listTasks(dao internal.Persistance) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tasks, err := dao.GetTasks()
+		tasks, err := dao.GetTasks(context.Background())
 		if err != nil {
 			w.Header().Add("Access-Control-Allow-Origin", "*")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type,access-control-allow-origin, access-control-allow-headers")

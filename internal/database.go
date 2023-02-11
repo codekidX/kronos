@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"database/sql"
 	"nut/gen/proto"
 	"nut/pkg/types"
@@ -12,11 +13,11 @@ import (
 )
 
 type Persistance interface {
-	GetTasks() ([]types.Task, error)
-	InsertTask(types.Task) error
-	GetArtifacts() ([]types.TaskArtifact, error)
-	InsertArtifact(types.TaskArtifact) error
-	UpdateTaskStatus(string, string, types.TaskStatus) error
+	GetTasks(context.Context) ([]types.Task, error)
+	InsertTask(context.Context, types.Task) error
+	GetArtifacts(context.Context) ([]types.TaskArtifact, error)
+	InsertArtifact(context.Context, types.TaskArtifact) error
+	UpdateTaskStatus(context.Context, string, string, types.TaskStatus) error
 	cleanup()
 }
 
@@ -39,7 +40,7 @@ func (nd *NutDatabase) cleanup() {
 	}
 }
 
-func (nd *NutDatabase) UpdateTaskStatus(ns, name string, status types.TaskStatus) error {
+func (nd *NutDatabase) UpdateTaskStatus(ctx context.Context, ns, name string, status types.TaskStatus) error {
 	stmt, err := nd.db.Prepare(`UPDATE tasks SET status = ? WHERE ns = ? AND name = ?`)
 	if err != nil {
 		return err
@@ -53,7 +54,7 @@ func (nd *NutDatabase) UpdateTaskStatus(ns, name string, status types.TaskStatus
 
 // INTERFACE IMPLEMENTATION
 
-func (nd *NutDatabase) GetTasks() ([]types.Task, error) {
+func (nd *NutDatabase) GetTasks(ctx context.Context) ([]types.Task, error) {
 	var tasks []types.Task
 	// tasks which are not finished or in error state
 	rows, err := nd.db.Query("SELECT * from tasks WHERE status != 3 OR status != 2")
@@ -81,7 +82,7 @@ func (nd *NutDatabase) GetTasks() ([]types.Task, error) {
 	return tasks, nil
 }
 
-func (nd *NutDatabase) InsertTask(task types.Task) error {
+func (nd *NutDatabase) InsertTask(ctx context.Context, task types.Task) error {
 	stmt, err := nd.db.Prepare(
 		`INSERT INTO tasks (
             ns,
@@ -110,11 +111,11 @@ func (nd *NutDatabase) InsertTask(task types.Task) error {
 	return nil
 }
 
-func (nd *NutDatabase) GetArtifacts() ([]types.TaskArtifact, error) {
+func (nd *NutDatabase) GetArtifacts(ctx context.Context) ([]types.TaskArtifact, error) {
 	panic("not implemented") // TODO: Implement
 }
 
-func (nd *NutDatabase) InsertArtifact(a types.TaskArtifact) error {
+func (nd *NutDatabase) InsertArtifact(ctx context.Context, a types.TaskArtifact) error {
 	stmt, err := nd.db.Prepare(
 		`INSERT INTO artifacts (output,
 			status,

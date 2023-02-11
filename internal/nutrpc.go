@@ -43,7 +43,7 @@ func (ns *NutService) Init(dbName *string, logger *zap.Logger) Persistance {
 }
 
 func (ns *NutService) load() error {
-	tasks, err := ns.Dao.GetTasks()
+	tasks, err := ns.Dao.GetTasks(context.Background())
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func (ns *NutService) Nudge(_ context.Context, opts *proto.TaskOption) (*proto.D
 	}
 
 	ns.logger.Debug("inserting task", zap.Any("opts", opts))
-	err := ns.Dao.InsertTask(types.Task{Options: opts, Status: types.Active})
+	err := ns.Dao.InsertTask(context.Background(), types.Task{Options: opts, Status: types.Active})
 	if err != nil {
 		ns.logger.Sugar().Error("error while inserting a nudge call",
 			zap.Any("opts", opts))
@@ -118,18 +118,18 @@ func (ns *NutService) triggerFunc(opts *proto.TaskOption, start time.Time) func(
 		resp, err := http.Post(opts.Url, "application/json", bytes.NewBuffer(opts.Data))
 		if err != nil {
 			// TODO: mark task state as errored
-			updateerr := ns.Dao.UpdateTaskStatus(opts.Ns, opts.Name, types.Errored)
+			updateerr := ns.Dao.UpdateTaskStatus(context.Background(), opts.Ns, opts.Name, types.Errored)
 			if updateerr != nil {
 				ns.logger.Error("error while updating task status", zap.Error(updateerr))
 			}
 			// here create new error artifact
-			artinserr := ns.Dao.InsertArtifact(types.TaskArtifact{
+			artinserr := ns.Dao.InsertArtifact(context.Background(), types.TaskArtifact{
 				Status:         types.Failure,
 				StartTime:      start,
 				EndTime:        time.Now(),
 				Output:         err.Error(),
 				ResponseType:   "None",
-				ResponseStatus: 503,
+				ResponseStatus: http.StatusServiceUnavailable,
 			})
 			if artinserr != nil {
 				ns.logger.Error("error while inserting failure artifact", zap.Error(artinserr))
@@ -145,7 +145,7 @@ func (ns *NutService) triggerFunc(opts *proto.TaskOption, start time.Time) func(
 		}
 		output = string(b)
 		// here create new error artifact
-		artinserr := ns.Dao.InsertArtifact(types.TaskArtifact{
+		artinserr := ns.Dao.InsertArtifact(context.Background(), types.TaskArtifact{
 			Status:         types.Success,
 			StartTime:      start,
 			EndTime:        time.Now(),
